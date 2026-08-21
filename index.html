@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TDMAP.PRO.VN.2959V1</title>
+  <title>TDMAP.PRO.VN.2959v2</title>
 
   <!-- ICON HIỂN THỊ TRÊN TAB TRÌNH DUYỆT + KHI TẠO PHÍM TẮT NGOÀI MÀN HÌNH ĐIỆN THOẠI  -->
   <!-- Đặt file app-icon.ico cùng thư mục với index.html (và manifest.json) trên server  -->
@@ -754,6 +754,10 @@
       background: linear-gradient(135deg, #1565d8, #0d4fb5);
     }
 
+    .btn-copy {
+      background: linear-gradient(135deg, #1a6fd4, #0d47a1);
+    }
+
     .btn-maps {
       background: linear-gradient(135deg, #e8430a, #c2320a);
     }
@@ -1019,6 +1023,48 @@
       opacity: .6;
     }
 
+    /* NÚT "DÙNG VỊ TRÍ CỦA TÔI" - tự dò Xã/Phường theo GPS trong khung Chọn Xã */
+    #autoLocateXaBtn {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #1a6fd4;
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #autoLocateXaBtn:active {
+      filter: brightness(.85);
+    }
+
+    #autoLocateXaBtn:disabled {
+      opacity: .6;
+    }
+
+    .drive-or-divider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0;
+      color: #999;
+      font-size: 11px;
+    }
+
+    .drive-or-divider::before,
+    .drive-or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
     #driveLoginBtn {
       margin-top: 10px;
       width: 100%;
@@ -1146,17 +1192,36 @@
       flex-shrink: 0;
     }
 
-    /* SPLASH */
+    /* SPLASH - nền là bản đồ Google Map (ảnh vệ tinh) đang tải phía sau, KHÔNG còn
+       màn trắng che kín như trước; nội dung (logo/nút chọn xã/hướng dẫn) đặt trong
+       1 "thẻ" nổi (#splashCard) để luôn dễ đọc dù ảnh vệ tinh phía sau có rối mắt.
+       pointer-events:none trên #splash để bản đồ phía sau vẫn xem/kéo được, chỉ
+       riêng #splashCard (pointer-events:auto) mới nhận thao tác chạm/bấm. */
     #splash {
       position: fixed;
       inset: 0;
       z-index: 1000;
-      background: #ffffff;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      pointer-events: none;
+    }
+
+    #splashCard {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(6px);
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      padding: 28px 26px 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 14px;
+      width: 340px;
+      max-width: 92vw;
     }
 
     #splash .brand {
@@ -1222,7 +1287,6 @@
       font-size: 13px;
       color: #555;
       text-align: center;
-      padding: 0 36px;
       line-height: 1.7;
     }
 
@@ -1578,15 +1642,17 @@
 <body class="hide-lbl-bg">
 
   <div id="splash">
-    <div class="brand">TDMAP.PRO.VN</div>
-    <div class="circle-row">
-      <div class="circle-item">
-        <div class="circle drive" onclick="openDriveModal()">🏘️</div>
-        <span class="circle-label">Chọn Xã/Phường</span>
+    <div id="splashCard">
+      <div class="brand">TDMAP.PRO.VN</div>
+      <div class="circle-row">
+        <div class="circle-item">
+          <div class="circle drive" onclick="openDriveModal()">🏘️</div>
+          <span class="circle-label">Chọn Xã/Phường</span>
+        </div>
       </div>
+      <h2>Tra cứu thông tin thửa đất</h2>
+      <p>Chọn Tỉnh/Thành và Xã/Phường nơi bạn muốn xem<br>để hiển thị bản đồ ranh thửa trên ảnh vệ tinh</p>
     </div>
-    <h2>Tra cứu thông tin thửa đất</h2>
-    <p>Chọn Tỉnh/Thành và Xã/Phường nơi bạn muốn xem<br>để hiển thị bản đồ ranh thửa trên ảnh vệ tinh</p>
   </div>
 
   <div id="map"></div>
@@ -1658,6 +1724,9 @@
     <div id="popupInfo">–</div>
     <div id="popupCoords">–</div>
     <div class="btn-row">
+      <a id="btnCopyInfo" class="btn-copy" href="#" onclick="event.preventDefault(); copyParcelInfo();">
+        <span class="ico">📋</span> Copy thông tin
+      </a>
       <a id="btnMaps" class="btn-maps" href="#" onclick="event.preventDefault(); openDirections();">
         <span class="ico">🧭</span> Chỉ đường
       </a>
@@ -1714,6 +1783,23 @@
     </div>
   </div>
 
+  <!-- HỘP THOẠI: ĐÃ COPY THÔNG TIN THỬA - kèm nút chia sẻ luôn dữ liệu vừa copy qua Zalo -->
+  <div id="copyInfoOverlay" class="modal-overlay">
+    <div class="modal-box" style="max-width:320px;">
+      <div class="modal-header">📋 Đã copy thông tin thửa</div>
+      <div class="modal-body">
+        <div id="copyInfoText"
+          style="background:#f2f7f6;border-radius:8px;padding:10px 12px;font-size:13px;color:#333;font-weight:700;word-break:break-word;line-height:1.5;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn secondary" onclick="closeCopyInfoOverlay()">Đóng</button>
+        <button class="modal-btn primary" style="background:#0068ff;"
+          onclick="closeCopyInfoOverlay(); shareParcelInfoZalo();">💬 Chia sẻ qua Zalo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: CHỌN XÃ/PHƯỜNG ĐỂ TẢI BẢN ĐỒ (Google Drive) -->
   <div id="driveModalOverlay" class="modal-overlay">
     <div class="modal-box" style="max-width:380px;">
@@ -1724,6 +1810,8 @@
           <polygon points="6,88 94,88 50,60" fill="#FFBA00" />
         </svg> Chọn Xã/Phường để xem bản đồ</div>
       <div class="modal-body">
+        <button id="autoLocateXaBtn" onclick="autoLocateXa()">📍 Dùng vị trí hiện tại của tôi</button>
+        <div class="drive-or-divider">hoặc chọn thủ công</div>
         <div style="display:flex; gap:10px;">
           <div style="flex:1;">
             <div class="drive-field-label"><span>Tỉnh / Thành</span></div>
@@ -1800,6 +1888,69 @@
             setDriveStatus('Không tải được dữ liệu Tỉnh/Xã (dvhc2025.js). Hãy đảm bảo file dvhc2025.js nằm cùng thư mục với file HTML đang chạy.', true);
           }
           resolve();
+        };
+        document.head.appendChild(s);
+      });
+    }
+  </script>
+  <!-- RANH GIỚI HÀNH CHÍNH (đã đơn giản hoá) của 3.321 Xã/Phường sau sáp nhập 2025,
+       dùng cho tính năng "Dùng vị trí hiện tại của tôi" (tự dò Xã/Phường theo GPS).
+       Để nhẹ (KHÔNG bắt người dùng tải hẳn 1 file ~7MB gộp cả nước mỗi lần định vị),
+       dữ liệu được TÁCH SẴN theo Tỉnh (34 file nhỏ trong thư mục ranhgioi_xa/,
+       xem ranhgioi_tinh_bbox.js cho danh sách + bounding-box từng tỉnh):
+       bấm định vị -> chỉ tải file bbox nhỏ (~5KB) để đoán tỉnh nào chứa toạ độ đó
+       -> rồi mới tải ĐÚNG 1 (hoặc vài, nếu gần biên giới 2 tỉnh) file ranh giới Xã
+       của riêng tỉnh đó (~100-400KB) để xác định chính xác Xã/Phường. Tải "lazy"
+       giống dvhc2025.js - chỉ tải khi người dùng bấm nút định vị lần đầu, không
+       chặn hiển thị bản đồ. Xem ensureTinhBBoxLoaded()/loadXaBoundaryForProvince() +
+       autoLocateXa() ở phần code phía dưới. -->
+  <script>
+    let __tinhBBoxState = 'idle'; // idle | loading | ready
+    function ensureTinhBBoxLoaded() {
+      return new Promise((resolve) => {
+        if (__tinhBBoxState === 'ready' || typeof tinhBBoxList !== 'undefined') {
+          __tinhBBoxState = 'ready'; resolve(); return;
+        }
+        if (__tinhBBoxState === 'loading') {
+          document.addEventListener('tinh-bbox-ready', () => resolve(), { once: true });
+          return;
+        }
+        __tinhBBoxState = 'loading';
+        const s = document.createElement('script');
+        s.src = new URL('ranhgioi_tinh_bbox.js', document.baseURI).href;
+        s.onload = () => { __tinhBBoxState = 'ready'; document.dispatchEvent(new Event('tinh-bbox-ready')); resolve(); };
+        s.onerror = () => {
+          __tinhBBoxState = 'idle';
+          console.error('Không tải được ranhgioi_tinh_bbox.js tại: ' + s.src + ' — hãy kiểm tra file này có nằm cùng thư mục với file HTML đang chạy không.');
+          resolve();
+        };
+        document.head.appendChild(s);
+      });
+    }
+
+    // Tải riêng file ranh giới Xã của 1 Tỉnh (vd "ranhgioi_xa/01.js") - cache lại
+    // theo maTP để bấm định vị lại lần sau (hoặc thử tỉnh lân cận khi ở gần biên
+    // giới) không phải tải lại. Mỗi file chỉ gán "var xaBoundaryDataList = [...]"
+    // (dùng "var" thay vì "const" để có thể nạp NHIỀU file .js khác nhau cùng biến
+    // này qua nhiều thẻ <script> nối tiếp mà không bị lỗi khai báo trùng), nên phải
+    // đọc + lưu vào cache NGAY sau khi script vừa tải xong, trước khi tải file tiếp theo.
+    const xaBoundaryDataByProvince = {};
+    function loadXaBoundaryForProvince(maTP) {
+      if (xaBoundaryDataByProvince[maTP]) return Promise.resolve(xaBoundaryDataByProvince[maTP]);
+      return new Promise((resolve) => {
+        const s = document.createElement('script');
+        const fileName = `ranhgioi_xa/${String(parseInt(maTP, 10)).padStart(2, '0')}.js`;
+        s.src = new URL(fileName, document.baseURI).href;
+        s.onload = () => {
+          const data = (typeof xaBoundaryDataList !== 'undefined') ? xaBoundaryDataList : null;
+          xaBoundaryDataByProvince[maTP] = data;
+          s.remove();
+          resolve(data);
+        };
+        s.onerror = () => {
+          console.error('Không tải được ' + fileName);
+          s.remove();
+          resolve(null);
         };
         document.head.appendChild(s);
       });
@@ -3280,6 +3431,90 @@
       activeP = null;
     }
 
+    // Chuỗi thông tin thửa dùng để copy - dạng "Tờ: 140, Thửa: 56, Diện tích:
+    // 2925.7, Loại đất: CLN" (gộp cả Loại đất, khác với dòng tiêu đề popup vốn
+    // tách riêng Loại đất xuống hàng dưới để hiển thị).
+    function buildParcelCopyText(p) {
+      const [toNum, thuaNum] = p.id.split('-');
+      const parts = [`Tờ: ${toNum}`, `Thửa: ${thuaNum}`];
+      if (p.dienTich) parts.push(`Diện tích: ${p.dienTich}`);
+      if (p.loaiDat) parts.push(`Loại đất: ${p.loaiDat}`);
+      return parts.join(', ');
+    }
+
+    // Copy 1 chuỗi văn bản vào clipboard - dùng chung cho nút Copy VÀ dự phòng
+    // của nút chia sẻ Zalo (khi trình duyệt không hỗ trợ Web Share API).
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      // Dự phòng cho trình duyệt/ngữ cảnh không có Clipboard API (vd http
+      // không an toàn, trình duyệt cũ) - dùng cách copy cũ qua textarea ẩn.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    function openCopyInfoOverlay(text) {
+      document.getElementById('copyInfoText').textContent = text;
+      document.getElementById('copyInfoOverlay').classList.add('show');
+    }
+    function closeCopyInfoOverlay() {
+      document.getElementById('copyInfoOverlay').classList.remove('show');
+    }
+
+    async function copyParcelInfo() {
+      if (!activeP) return;
+      const text = buildParcelCopyText(activeP);
+      try {
+        await copyTextToClipboard(text);
+        openCopyInfoOverlay(text);
+      } catch (e) {
+        showStatus('Không sao chép được (trình duyệt chặn quyền clipboard)');
+      }
+    }
+
+    // Chia sẻ thông tin thửa qua Zalo. KHÔNG dùng Web Share API (navigator.share)
+    // nữa - khay chia sẻ chung của hệ điều hành thường KHÔNG có Zalo trong danh
+    // sách (đặc biệt trên máy tính Windows, chỉ thấy Outlook/Mail...), gây hiểu
+    // lầm là bấm nhầm nút. Thay vào đó, TỰ MỞ THẲNG ứng dụng Zalo:
+    //  1) Thử điều hướng qua URL scheme riêng "zalo://" - nếu máy (điện thoại
+    //     HOẶC máy tính) đã cài Zalo và có đăng ký scheme này, trình duyệt sẽ
+    //     chuyển sang mở app ngay (tab trình duyệt mất focus - bắt qua sự kiện
+    //     'blur' để biết đã mở thành công). Nếu máy KHÔNG cài, trình duyệt lặng
+    //     lẽ bỏ qua (không lỗi, không điều hướng đi đâu cả).
+    //  2) Sau ~800ms mà tab vẫn còn focus (app KHÔNG mở được) -> rơi về mở trang
+    //     https://zalo.me/ (trên điện thoại đã cài Zalo, chính trang này thường
+    //     TỰ chuyển sang mở app qua cơ chế App Links/Universal Links của Zalo;
+    //     trên máy tính chưa cài thì mở trang tải Zalo).
+    // Zalo không có API công khai để tự điền sẵn nội dung tin nhắn khi mở app
+    // theo cách này -> thông tin đã được copy sẵn vào clipboard (từ nút Copy),
+    // người dùng chỉ cần dán (Paste) vào đúng cuộc trò chuyện muốn gửi.
+    async function shareParcelInfoZalo() {
+      if (!activeP) return;
+      const text = buildParcelCopyText(activeP);
+      try { await copyTextToClipboard(text); } catch (e) { /* có thể đã copy sẵn từ nút Copy trước đó */ }
+
+      let appOpened = false;
+      const onBlur = () => { appOpened = true; };
+      window.addEventListener('blur', onBlur);
+      try { window.location.href = 'zalo://'; } catch (e) { /* trình duyệt chặn scheme lạ - bỏ qua */ }
+
+      setTimeout(() => {
+        window.removeEventListener('blur', onBlur);
+        if (!appOpened) window.open('https://zalo.me/', '_blank', 'noopener');
+      }, 800);
+
+      showAlert(`Đã copy thông tin thửa và đang mở Zalo:\n${text}\n\nHãy dán (Paste) vào cuộc trò chuyện muốn gửi.`);
+    }
+
     map.on('click', e => {
       // ── LƯỚI AN TOÀN: tự mở thông tin thửa nếu xác định chắc chắn chạm trúng ────
       // Đôi khi Leaflet Canvas không tự bắt được sự kiện click lên đúng polygon
@@ -4050,6 +4285,141 @@
       }
     }
 
+    // ── CHỌN XÃ THEO ĐỊNH VỊ (GPS) ─────────────────────────────────────────────────
+    // Dò xem toạ độ GPS hiện tại nằm trong ranh giới của Xã/Phường nào, rồi tự
+    // điền Tỉnh/Xã và gọi luôn onCommuneInput() để tự kết nối/tải bản đồ của Xã đó
+    // - người dùng không cần tự gõ/tìm tên Xã của mình. Mã Xã lấy từ trường SHTHUA
+    // (Số thửa) của file ranh giới gốc (định dạng cadastral tái sử dụng cho lớp
+    // ranh giới hành chính) - trùng với trường "Mã" trong dvhc2025.js.
+    //
+    // Để nhẹ, KHÔNG dò trên dữ liệu ranh giới cả nước cùng lúc: trước tiên dùng
+    // ranhgioi_tinh_bbox.js (~5KB, xem ensureTinhBBoxLoaded() ở trên) để đoán
+    // (các) Tỉnh có bounding-box chứa toạ độ đó, rồi CHỈ tải ranh giới Xã của
+    // (các) Tỉnh nghi ngờ đó (mỗi Tỉnh ~100-400KB, xem loadXaBoundaryForProvince())
+    // để xác định chính xác bằng ray-casting.
+
+    // Ray-casting kiểm tra 1 điểm (lon,lat) có nằm trong 1 ring hay không - CHÚ Ý
+    // ring ở đây theo đúng thứ tự toạ độ GeoJSON gốc [lon, lat] (khác với
+    // pointInRing() dùng cho thửa đất ở trên vốn nhận [lat, lon] kiểu Leaflet).
+    function pointInGeoJSONRing(lon, lat, ring) {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1];
+        const xj = ring[j][0], yj = ring[j][1];
+        const intersect = ((yi > lat) !== (yj > lat)) &&
+          (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Tính sẵn bounding-box cho mỗi Xã trong 1 danh sách (1 Tỉnh) - chỉ tính 1 LẦN
+    // mỗi danh sách (đánh dấu bằng cờ riêng trên chính mảng đó) để loại nhanh phần
+    // lớn ứng viên trước khi chạy ray-casting tốn hơn.
+    function ensureXaListBBoxes(xaList) {
+      if (!xaList || xaList.__bboxReady) return;
+      xaList.forEach(x => {
+        let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+        x.g.forEach(poly => poly.forEach(ring => ring.forEach(pt => {
+          const lo = pt[0], la = pt[1];
+          if (lo < minLon) minLon = lo; if (lo > maxLon) maxLon = lo;
+          if (la < minLat) minLat = la; if (la > maxLat) maxLat = la;
+        })));
+        x._minLon = minLon; x._maxLon = maxLon; x._minLat = minLat; x._maxLat = maxLat;
+      });
+      xaList.__bboxReady = true;
+    }
+
+    // Tìm Xã/Phường chứa điểm (lat, lon) trong 1 danh sách Xã (của 1 Tỉnh) - trả
+    // về { ma, ten, cap } hoặc null nếu không thuộc Xã nào trong danh sách đó.
+    function findXaAtPointInList(lat, lon, xaList) {
+      if (!xaList) return null;
+      ensureXaListBBoxes(xaList);
+      for (const x of xaList) {
+        if (lon < x._minLon || lon > x._maxLon || lat < x._minLat || lat > x._maxLat) continue;
+        for (const poly of x.g) {
+          if (!poly.length) continue;
+          if (!pointInGeoJSONRing(lon, lat, poly[0])) continue; // phải trong viền ngoài
+          let inHole = false;
+          for (let r = 1; r < poly.length; r++) {
+            if (pointInGeoJSONRing(lon, lat, poly[r])) { inHole = true; break; } // trừ phần lỗ (nếu có)
+          }
+          if (!inHole) return x;
+        }
+      }
+      return null;
+    }
+
+    // Đoán (các) Tỉnh có bounding-box chứa điểm (lat, lon), sắp theo diện tích
+    // bbox tăng dần (Tỉnh nhỏ/khớp hơn thử trước) - thường chỉ ra đúng 1 Tỉnh,
+    // hoạ hoằn ra vài Tỉnh nếu điểm gần biên giới (bbox 2 Tỉnh cạnh nhau chồng lấn).
+    function guessProvinceCandidates(lat, lon) {
+      if (typeof tinhBBoxList === 'undefined') return [];
+      return tinhBBoxList
+        .filter(t => lon >= t.minLon && lon <= t.maxLon && lat >= t.minLat && lat <= t.maxLat)
+        .sort((a, b) => (a.maxLon - a.minLon) * (a.maxLat - a.minLat) - (b.maxLon - b.minLon) * (b.maxLat - b.minLat));
+    }
+
+    // Bấm nút "Dùng vị trí hiện tại của tôi": xin quyền định vị -> đoán Tỉnh theo
+    // bbox -> tải ranh giới Xã của (các) Tỉnh nghi ngờ -> dò chính xác bằng
+    // ray-casting -> tự điền Tỉnh/Xã -> gọi onCommuneInput() để tự động tải bản đồ.
+    async function autoLocateXa() {
+      if (!navigator.geolocation) {
+        showAlert('Trình duyệt không hỗ trợ định vị. Vui lòng chọn Tỉnh/Xã thủ công bên dưới.');
+        return;
+      }
+      const btn = document.getElementById('autoLocateXaBtn');
+      btn.disabled = true;
+      setDriveStatus('Đang xác định vị trí của bạn...');
+
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const lat = pos.coords.latitude, lon = pos.coords.longitude;
+          setDriveStatus('Đang dò Xã/Phường theo vị trí của bạn...');
+          try {
+            await Promise.all([ensureTinhBBoxLoaded(), loadDvhcData()]);
+            const candidates = guessProvinceCandidates(lat, lon);
+            if (!candidates.length) {
+              setDriveStatus('Không xác định được Tỉnh/Xã tại vị trí này. Vui lòng chọn thủ công bên dưới.', true);
+              return;
+            }
+
+            let hit = null;
+            for (const cand of candidates) {
+              setDriveStatus(`Đang dò Xã/Phường trong ${cand.ten}...`);
+              const xaList = await loadXaBoundaryForProvince(cand.maTP);
+              hit = findXaAtPointInList(lat, lon, xaList);
+              if (hit) break;
+            }
+            if (!hit) {
+              setDriveStatus('Không xác định được Xã/Phường tại vị trí này. Vui lòng chọn thủ công bên dưới.', true);
+              return;
+            }
+            const dvhcItem = dvhcData.find(item => item["Mã"] === hit.ma);
+            if (!dvhcItem) {
+              setDriveStatus(`Xác định được vị trí thuộc "${hit.ten}" (mã ${hit.ma}) nhưng không khớp danh mục Tỉnh/Xã. Vui lòng chọn thủ công.`, true);
+              return;
+            }
+            document.getElementById('driveProvinceInput').value = dvhcItem["Tỉnh / Thành Phố"];
+            onProvinceInput();
+            document.getElementById('driveCommuneInput').value = dvhcItem["Tên"];
+            onCommuneInput();
+            showStatus(`✓ Vị trí của bạn thuộc ${dvhcItem["Tên"]}, ${dvhcItem["Tỉnh / Thành Phố"]}`);
+          } catch (e) {
+            setDriveStatus(`Lỗi khi dò Xã/Phường theo vị trí: ${e.message || e}. Vui lòng chọn thủ công.`, true);
+          } finally {
+            btn.disabled = false;
+          }
+        },
+        err => {
+          const msgs = { 1: 'Bị từ chối quyền định vị', 2: 'Không xác định được vị trí', 3: 'Hết thời gian chờ' };
+          setDriveStatus((msgs[err.code] || 'Lỗi định vị') + '. Vui lòng chọn thủ công bên dưới.', true);
+          btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+      );
+    }
+
     // Kiểm tra Tỉnh / Xã đã chọn đúng hay chưa để bật/tắt nút "Tải lại danh sách
     // bản đồ" tương ứng - bản dành cho người dân KHÔNG cần đăng nhập tài khoản,
     // chỉ cần chọn đúng Tỉnh/Xã là tự động quét thư mục + file bản đồ công khai.
@@ -4199,6 +4569,7 @@
       document.getElementById('driveApiKeyInput').value = '';
       document.getElementById('driveFolderInput').value = localStorage.getItem(GDRIVE_FOLDER_STORAGE) || GDRIVE_DEFAULT_FOLDER;
       document.getElementById('driveFileList').innerHTML = '';
+      document.getElementById('autoLocateXaBtn').disabled = false;
       setDriveStatus('');
       updateDriveListBtnState();
       document.getElementById('driveModalOverlay').classList.add('show');
