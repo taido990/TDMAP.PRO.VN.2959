@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TDMAP.PRO.VN.2959v2</title>
+  <title>TDMAP.PRO.VN.2959v3</title>
 
   <!-- ICON HIỂN THỊ TRÊN TAB TRÌNH DUYỆT + KHI TẠO PHÍM TẮT NGOÀI MÀN HÌNH ĐIỆN THOẠI  -->
   <!-- Đặt file app-icon.ico cùng thư mục với index.html (và manifest.json) trên server  -->
@@ -3481,38 +3481,38 @@
       }
     }
 
-    // Chia sẻ thông tin thửa qua Zalo. KHÔNG dùng Web Share API (navigator.share)
-    // nữa - khay chia sẻ chung của hệ điều hành thường KHÔNG có Zalo trong danh
-    // sách (đặc biệt trên máy tính Windows, chỉ thấy Outlook/Mail...), gây hiểu
-    // lầm là bấm nhầm nút. Thay vào đó, TỰ MỞ THẲNG ứng dụng Zalo:
-    //  1) Thử điều hướng qua URL scheme riêng "zalo://" - nếu máy (điện thoại
-    //     HOẶC máy tính) đã cài Zalo và có đăng ký scheme này, trình duyệt sẽ
-    //     chuyển sang mở app ngay (tab trình duyệt mất focus - bắt qua sự kiện
-    //     'blur' để biết đã mở thành công). Nếu máy KHÔNG cài, trình duyệt lặng
-    //     lẽ bỏ qua (không lỗi, không điều hướng đi đâu cả).
-    //  2) Sau ~800ms mà tab vẫn còn focus (app KHÔNG mở được) -> rơi về mở trang
-    //     https://zalo.me/ (trên điện thoại đã cài Zalo, chính trang này thường
-    //     TỰ chuyển sang mở app qua cơ chế App Links/Universal Links của Zalo;
-    //     trên máy tính chưa cài thì mở trang tải Zalo).
-    // Zalo không có API công khai để tự điền sẵn nội dung tin nhắn khi mở app
-    // theo cách này -> thông tin đã được copy sẵn vào clipboard (từ nút Copy),
-    // người dùng chỉ cần dán (Paste) vào đúng cuộc trò chuyện muốn gửi.
+    // Chia sẻ thông tin thửa qua Zalo. "zalo://" ĐÃ KIỂM CHỨNG THỰC TẾ trên điện
+    // thoại KHÔNG mở được app (không phải scheme công khai Zalo đăng ký) - bỏ hẳn
+    // cách này. Cách ĐÚNG và THỰC SỰ chạy được, phân theo nền tảng:
+    //  - TRÊN ĐIỆN THOẠI (Android/iOS): dùng Web Share API (navigator.share) -
+    //    đây mới là cơ chế CHUẨN của hệ điều hành, và Zalo có đăng ký chính thức
+    //    làm 1 đích nhận "Share to..." trong khay chia sẻ Android/iOS -> khay hiện
+    //    ra sẽ CÓ Zalo để chọn, chia sẻ thẳng nội dung vào app luôn.
+    //  - TRÊN MÁY TÍNH (Windows/macOS): Web Share API (nếu có) trên desktop
+    //    thường KHÔNG liệt kê Zalo (đã xác nhận qua ảnh chụp thực tế - chỉ có
+    //    Outlook/Mail...) vì Zalo Desktop không đăng ký với khay chia sẻ của hệ
+    //    điều hành theo cách đó -> bỏ qua Web Share trên desktop, mở thẳng trang
+    //    https://zalo.me/ để người dùng tự mở app Zalo (hoặc đăng nhập Zalo Web)
+    //    rồi dán nội dung đã copy sẵn vào clipboard.
     async function shareParcelInfoZalo() {
       if (!activeP) return;
       const text = buildParcelCopyText(activeP);
       try { await copyTextToClipboard(text); } catch (e) { /* có thể đã copy sẵn từ nút Copy trước đó */ }
 
-      let appOpened = false;
-      const onBlur = () => { appOpened = true; };
-      window.addEventListener('blur', onBlur);
-      try { window.location.href = 'zalo://'; } catch (e) { /* trình duyệt chặn scheme lạ - bỏ qua */ }
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-      setTimeout(() => {
-        window.removeEventListener('blur', onBlur);
-        if (!appOpened) window.open('https://zalo.me/', '_blank', 'noopener');
-      }, 800);
+      if (isMobile && navigator.share) {
+        try {
+          await navigator.share({ title: 'TDMAP.PRO.VN', text });
+          return; // đã chia sẻ thẳng qua khay hệ thống (người dùng chọn Zalo trong đó) - xong
+        } catch (e) {
+          if (e && e.name === 'AbortError') return; // người dùng tự bấm huỷ khay chia sẻ - không làm gì thêm
+          // Lỗi khác (hiếm) -> rơi xuống phương án mở trang zalo.me bên dưới
+        }
+      }
 
-      showAlert(`Đã copy thông tin thửa và đang mở Zalo:\n${text}\n\nHãy dán (Paste) vào cuộc trò chuyện muốn gửi.`);
+      window.open('https://zalo.me/', '_blank', 'noopener');
+      showAlert(`Đã copy thông tin thửa:\n${text}\n\nHãy mở Zalo và dán (Paste) vào cuộc trò chuyện muốn gửi.`);
     }
 
     map.on('click', e => {
