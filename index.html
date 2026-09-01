@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TDMAP.PRO.VN.2959v1</title>
+  <title>TDMAP.PRO.VN.2959</title>
+  <!-- 010926  -->
 
   <!-- ICON HIỂN THỊ TRÊN TAB TRÌNH DUYỆT + KHI TẠO PHÍM TẮT NGOÀI MÀN HÌNH ĐIỆN THOẠI  -->
   <!-- Đặt file app-icon.ico cùng thư mục với index.html (và manifest.json) trên server  -->
@@ -642,17 +643,30 @@
 
     #popupHeader {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
+      gap: 10px;
       margin-bottom: 8px;
     }
 
+    /* Gộp brand + Tờ/Thửa + toạ độ vào chung 1 dòng, vd:
+       "TDMAP: Tờ: 168, Thửa: 608 12.7779650, 108.1536626" */
     #popupBrand {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 6px;
       font-size: 10px;
       font-weight: 800;
       color: #00c6a7;
       letter-spacing: 1.5px;
       text-transform: uppercase;
+    }
+
+    #popupBrand #popupTitle,
+    #popupBrand #popupCoords {
+      text-transform: none;
+      letter-spacing: normal;
     }
 
     #popupClose {
@@ -670,10 +684,9 @@
     }
 
     #popupTitle {
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 800;
       color: #111;
-      margin-bottom: 2px;
     }
 
     #popupInfo {
@@ -721,7 +734,6 @@
     #popupCoords {
       font-size: 10px;
       color: #aaa;
-      margin-bottom: 10px;
     }
 
     .btn-row {
@@ -1717,12 +1729,13 @@
   <div id="popup">
     <div id="popupHandle"></div>
     <div id="popupHeader">
-      <span id="popupBrand">TDMAP.PRO.VN</span>
+      <span id="popupBrand">TDMAP:
+        <span id="popupTitle">–</span>
+        <span id="popupCoords">–</span>
+      </span>
       <button id="popupClose" onclick="closePopup()">✕</button>
     </div>
-    <div id="popupTitle">–</div>
     <div id="popupInfo">–</div>
-    <div id="popupCoords">–</div>
     <div class="btn-row">
       <a id="btnCopyInfo" class="btn-copy" href="#" onclick="event.preventDefault(); copyParcelInfo();">
         <span class="ico">📋</span> Copy thông tin
@@ -2314,6 +2327,7 @@
       const row = document.getElementById('topControlsRow');
       const searchBar = document.getElementById('searchBar');
       const suggestions = document.getElementById('searchSuggestions');
+      const labelZoomControl = document.getElementById('labelZoomControl');
       if (!row || !searchBar) return;
       const rowRect = row.getBoundingClientRect();
       const newTop = Math.round(rowRect.bottom + 10);
@@ -2321,6 +2335,16 @@
       if (suggestions) {
         const barRect = searchBar.getBoundingClientRect();
         suggestions.style.top = Math.round(barRect.bottom + 8) + 'px';
+
+        // Dịch danh sách gợi ý sang phải để không chồng đè lên cột nút chọn
+        // ngưỡng zoom (labelZoomControl) nằm cùng bên trái, ngay dưới thanh
+        // tìm kiếm - trước đây cả 2 đều bắt đầu gần mép trái nên bị đè lên nhau.
+        if (labelZoomControl) {
+          const lzcRect = labelZoomControl.getBoundingClientRect();
+          const shiftedLeft = Math.round(lzcRect.right + 8);
+          suggestions.style.left = shiftedLeft + 'px';
+          suggestions.style.maxWidth = Math.max(220, window.innerWidth - shiftedLeft - 15) + 'px';
+        }
       }
 
       // Đưa control chọn ngưỡng nhãn (trái) + cụm nút 🧭/📍/+/- (phải, góc Leaflet
@@ -2331,7 +2355,6 @@
       // kiếm thay vì đoán cứng 1 giá trị pixel.
       const searchBarRect = searchBar.getBoundingClientRect();
       const belowSearchTop = Math.round(searchBarRect.bottom + 10);
-      const labelZoomControl = document.getElementById('labelZoomControl');
       if (labelZoomControl) labelZoomControl.style.top = belowSearchTop + 'px';
       // Lúc gọi lần đầu (ngay khi script chạy), bản đồ Leaflet + các control 🧭/📍/+/-
       // CHƯA được tạo (map khởi tạo ở đoạn code phía dưới) -> phần tử ".leaflet-top.
@@ -3381,20 +3404,16 @@
 
       document.getElementById('searchInput').value = p.id;
 
-      // Hàng 1 (tiêu đề, thay cho "Tờ-Thửa xx-xx"): Tờ, Thửa, Diện tích
+      // Hàng 1 (tiêu đề, thay cho "Tờ-Thửa xx-xx"): Tờ, Thửa (đã tắt Diện tích
+      // theo yêu cầu - không hiển thị Diện tích/Loại đất trong popup thửa).
       const [toNum, thuaNum] = p.id.split('-');
       const infoParts = [`Tờ: ${toNum}`, `Thửa: ${thuaNum}`];
-      if (p.dienTich) infoParts.push(`Diện tích: ${p.dienTich}`);
 
       document.getElementById('popupTitle').textContent = infoParts.join(', ');
 
-      // Hàng 2: Loại đất (nếu có) - chỉ hiển thị Tờ/Thửa/Loại đất/Diện tích, KHÔNG
-      // hiển thị Tên chủ hay Trạng thái đăng ký cho người dân.
-      const loaiDatLineHtml = p.loaiDat
-        ? `<div class="popup-loaidat-line">Loại đất: ${escapeHtml(p.loaiDat)}</div>`
-        : '';
-
-      document.getElementById('popupInfo').innerHTML = loaiDatLineHtml;
+      // Hàng 2: đã tắt hiển thị Loại đất - không hiển thị Tên chủ hay Trạng
+      // thái đăng ký cho người dân.
+      document.getElementById('popupInfo').innerHTML = '';
 
       document.getElementById('popupCoords').textContent =
         `${(p.lat || 0).toFixed(7)}, ${(p.lon || 0).toFixed(7)}`;
@@ -3665,15 +3684,14 @@
         return;
       }
 
+      // Đã tắt hiển thị Diện tích/Loại đất trong danh sách gợi ý tìm kiếm.
+      // Hiện dạng "Tờ: x, Thửa: y" thay vì "Tờ-Thửa x-y" cho đồng nhất với popup.
       const shown = matches.slice(0, MAX_SUGGESTIONS);
       const rows = shown.map((p, i) => {
-        const sub = [];
-        if (p.dienTich) sub.push(`DT: ${p.dienTich}`);
-        if (p.loaiDat) sub.push(p.loaiDat);
+        const [toNum, thuaNum] = p.id.split('-');
         return `
       <div class="sg-item" onclick="selectSuggestion(${i})">
-        <div class="sg-id">Tờ-Thửa ${escapeHtml(p.id)}</div>
-        ${sub.length ? `<div class="sg-sub">${escapeHtml(sub.join(' · '))}</div>` : ''}
+        <div class="sg-id">Tờ: ${escapeHtml(toNum)}, Thửa: ${escapeHtml(thuaNum)}</div>
       </div>`;
       }).join('');
 
